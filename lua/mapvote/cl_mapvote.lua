@@ -373,12 +373,12 @@ net.Receive("RAM_WorkshopInfo", function()
     for name, wsid in pairs(lookup) do
         if file.Exists("data/ttt_meta_map_thumbnails/" .. name .. ".jpg", "GAME") then continue end
 
-        http.Fetch(BASE_WS_URL .. ws_id, function(html)
+        http.Fetch(BASE_WS_URL .. wsid, function(html)
             local thumbnail_url = html:match("%<meta property%=\"og%:image\" content%=\"(.+)\"")
             thumbnail_url = thumbnail_url:match("^https%:%/%/steamuserimages%-a%.akamaihd%.net%/ugc%/[A-Z0-9]+%/[A-Z0-9]+%/")
 
             http.Fetch(thumbnail_url, function(img)
-                file.Write("ttt_meta_map_thumbnails/" .. map_name .. ".jpg", img)
+                file.Write("ttt_meta_map_thumbnails/" .. name .. ".jpg", img)
             end, error)
         end, error)
     end
