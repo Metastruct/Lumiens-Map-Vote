@@ -1,28 +1,26 @@
 util.AddNetworkString("RAM_MapVoteStart")
 util.AddNetworkString("RAM_MapVoteUpdate")
 util.AddNetworkString("RAM_MapVoteCancel")
+util.AddNetworkString("RAM_WorkshopInfo")
 util.AddNetworkString("RTV_Delay")
 
 MapVote.Continued = false
 
 net.Receive("RAM_MapVoteUpdate", function(len, ply)
-    if (MapVote.Allow) then
-        if (IsValid(ply)) then
-            local update_type = net.ReadUInt(3)
+    if not MapVote.Allow then return end
+    if not IsValid(ply) then return end
 
-            if (update_type == MapVote.UPDATE_VOTE) then
-                local map_id = net.ReadUInt(32)
+    local update_type = net.ReadUInt(3)
+    if update_type == MapVote.UPDATE_VOTE then
+        local map_id = net.ReadUInt(32)
+        if MapVote.CurrentMaps[map_id] then
+            MapVote.Votes[ply:SteamID()] = map_id
 
-                if (MapVote.CurrentMaps[map_id]) then
-                    MapVote.Votes[ply:SteamID()] = map_id
-
-                    net.Start("RAM_MapVoteUpdate")
-                    net.WriteUInt(MapVote.UPDATE_VOTE, 3)
-                    net.WriteEntity(ply)
-                    net.WriteUInt(map_id, 32)
-                    net.Broadcast()
-                end
-            end
+            net.Start("RAM_MapVoteUpdate")
+            net.WriteUInt(MapVote.UPDATE_VOTE, 3)
+            net.WriteEntity(ply)
+            net.WriteUInt(map_id, 32)
+            net.Broadcast()
         end
     end
 end)
@@ -33,7 +31,7 @@ else
     recentmaps = {}
 end
 
-if file.Exists("mapvote/playcount.txt", "DATA") then 
+if file.Exists("mapvote/playcount.txt", "DATA") then
     playCount = util.JSONToTable(file.Read("mapvote/playcount.txt", "DATA"))
 else
     playCount = {}
@@ -48,7 +46,9 @@ end
 function CoolDownDoStuff()
     cooldownnum = MapVote.Config.MapsBeforeRevote or 3
 
-    if table.getn(recentmaps) == cooldownnum then table.remove(recentmaps) end
+    if #recentmaps == cooldownnum then
+        table.remove(recentmaps)
+    end
 
     local curmap = game.GetMap():lower() .. ".bsp"
 
@@ -58,7 +58,7 @@ function CoolDownDoStuff()
 
     if playCount[curmap] == nil then
         playCount[curmap] = 1
-    else 
+    else
         playCount[curmap] = playCount[curmap] + 1
     end
 
@@ -70,20 +70,15 @@ function MapVote.Start(length, current, limit, prefix, callback)
     current = current or MapVote.Config.AllowCurrentMap or false
     length = length or MapVote.Config.TimeLimit or 28
     limit = limit or MapVote.Config.MapLimit or 24
-    cooldown = MapVote.Config.EnableCooldown or MapVote.Config.EnableCooldown ==
-                   nil and true
+    cooldown = MapVote.Config.EnableCooldown or MapVote.Config.EnableCooldown == nil and true
     prefix = prefix or MapVote.Config.MapPrefixes
-    autoGamemode = autoGamemode or MapVote.Config.AutoGamemode or
-                       MapVote.Config.AutoGamemode == nil and true
+    autoGamemode = autoGamemode or MapVote.Config.AutoGamemode or MapVote.Config.AutoGamemode == nil and true
 
     local is_expression = false
-
     if not prefix then
-        local info = file.Read(GAMEMODE.Folder .. "/" .. GAMEMODE.FolderName ..
-                                   ".txt", "GAME")
-
-        if (info) then
-            local info = util.KeyValuesToTable(info)
+        local info = file.Read(GAMEMODE.Folder .. "/" .. GAMEMODE.FolderName .. ".txt", "GAME")
+        if info then
+            info = util.KeyValuesToTable(info)
             prefix = info.maps
         else
             error("MapVote Prefix can not be loaded from gamemode")
@@ -91,35 +86,32 @@ function MapVote.Start(length, current, limit, prefix, callback)
 
         is_expression = true
     else
-        if prefix and type(prefix) ~= "table" then prefix = {prefix} end
+        if prefix and type(prefix) ~= "table" then
+            prefix = {prefix}
+        end
     end
 
     local maps = file.Find("maps/*.bsp", "GAME")
-
     local vote_maps = {}
     local play_counts = {}
-
     local amt = 0
-
-    for k, map in RandomPairs(maps) do
-        local mapstr = map:sub(1, -5):lower()
+    for _, map in RandomPairs(maps) do
         local plays = playCount[map]
 
-        if (plays == nil) then 
+        if (plays == nil) then
             plays = 0
         end
 
-        if (not ((not current and game.GetMap():lower() .. ".bsp" == map) or
-            (cooldown and table.HasValue(recentmaps, map)))) then
-
+        if (not ((not current and game.GetMap():lower() .. ".bsp" == map) or (cooldown and table.HasValue(recentmaps, map)))) then
             if is_expression then
-                if (string.find(map, prefix)) then -- This might work (from gamemode.txt)
+                -- This might work (from gamemode.txt)
+                if (string.find(map, prefix)) then
                     vote_maps[#vote_maps + 1] = map:sub(1, -5)
                     play_counts[#play_counts + 1] = plays
                     amt = amt + 1
                 end
             else
-                for k, v in pairs(prefix) do
+                for _, v in pairs(prefix) do
                     if string.find(map, "^" .. v) then
                         vote_maps[#vote_maps + 1] = map:sub(1, -5)
                         play_counts[#play_counts + 1] = plays
@@ -136,8 +128,8 @@ function MapVote.Start(length, current, limit, prefix, callback)
     net.Start("RAM_MapVoteStart")
     net.WriteUInt(#vote_maps, 32)
 
-    for i = 1, #vote_maps do 
-        net.WriteString(vote_maps[i]) 
+    for i = 1, #vote_maps do
+        net.WriteString(vote_maps[i])
         net.WriteUInt(play_counts[i], 32)
     end
 
@@ -153,30 +145,26 @@ function MapVote.Start(length, current, limit, prefix, callback)
         local map_results = {}
 
         for k, v in pairs(MapVote.Votes) do
-            if (not map_results[v]) then map_results[v] = 0 end
+            if (not map_results[v]) then
+                map_results[v] = 0
+            end
 
             for k2, v2 in pairs(player.GetAll()) do
                 if (v2:SteamID() == k) then
                     map_results[v] = map_results[v] + 1
                 end
             end
-
         end
 
         CoolDownDoStuff()
-
         local winner = table.GetWinningKey(map_results) or 1
-
         net.Start("RAM_MapVoteUpdate")
         net.WriteUInt(MapVote.UPDATE_WIN, 3)
-
         net.WriteUInt(winner, 32)
         net.Broadcast()
 
         local map = MapVote.CurrentMaps[winner]
-
         local gamemode = nil
-
         if (autoGamemode) then
             -- check if map matches a gamemode's map pattern
             for k, gm in pairs(engine.GetGamemodes()) do
@@ -204,6 +192,7 @@ function MapVote.Start(length, current, limit, prefix, callback)
                     if (gamemode and gamemode ~= engine.ActiveGamemode()) then
                         RunConsoleCommand("gamemode", gamemode)
                     end
+
                     RunConsoleCommand("changelevel", map)
                 end
             end
@@ -223,7 +212,23 @@ function MapVote.Cancel()
 
         net.Start("RAM_MapVoteCancel")
         net.Broadcast()
-
-        timer.Destroy("RAM_MapVote")
+        timer.Remove("RAM_MapVote")
     end
 end
+
+hook.Add("PlayerFullyConnected", "NetworkMapWsids", function(ply)
+    local lookup = {}
+    local wsid_files, _ = file.Find("maps/*.wsid", "GAME")
+    for _, wsid_file in ipairs(wsid_files) do
+        local wsid = file.Read("maps/" .. wsid_file, "GAME")
+        lookup[string.StripExtension(wsid_file)] = wsid
+    end
+
+    local data = util.Compress(util.TableToJSON(lookup))
+    local bytes = #data
+
+    net.Start("RAM_WorkshopInfo")
+    net.WriteUInt(bytes, 16)
+    net.WriteData(data, bytes)
+    net.Send(ply)
+end)
