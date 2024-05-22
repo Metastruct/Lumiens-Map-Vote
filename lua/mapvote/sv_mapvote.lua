@@ -221,7 +221,9 @@ hook.Add("PlayerFullyConnected", "NetworkMapWsids", function(ply)
     local wsid_files, _ = file.Find("maps/*.wsid", "GAME")
     for _, wsid_file in ipairs(wsid_files) do
         local wsid = file.Read("maps/" .. wsid_file, "GAME")
-        lookup[string.StripExtension(wsid_file)] = wsid
+        local name = string.StripExtension(string.StripExtension(wsid_file)) -- twice, because .bsp.wsid
+
+        lookup[name] = wsid
     end
 
     local data = util.Compress(util.TableToJSON(lookup))
