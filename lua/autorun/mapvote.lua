@@ -35,7 +35,6 @@ if SERVER then
     AddCSLuaFile("mapvote/cl_mapvote.lua")
 
     include("mapvote/sv_mapvote.lua")
-    include("mapvote/rtv.lua")
 
     hook.Add("Initialize", "AutoTTTMapVote", function()
         if GAMEMODE_NAME == "terrortown" then
