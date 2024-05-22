@@ -37,15 +37,29 @@ function RTV.Start()
 end
 
 function RTV.AddVote(ply)
-    if RTV.CanVote(ply) then
-        RTV.TotalVotes = RTV.TotalVotes + 1
-        ply.RTVoted = true
-        MsgN(ply:Nick() .. " has voted to Rock the Vote.")
-        PrintMessage(HUD_PRINTTALK, ply:Nick() .. " has voted to Rock the Vote. (" .. RTV.TotalVotes .. "/" .. math.Round(#player.GetAll() * 0.66) .. ")")
+    if not RTV.CanVote(pl) then return end
 
-        if RTV.ShouldChange() then
-            RTV.Start()
-        end
+    RTV.TotalVotes = RTV.TotalVotes + 1
+    pl.RTVoted = true
+
+    local players = player.GetAll()
+    local requiredAmount = math.Round(#players * 0.66)
+    local sndPitch = 90 + math.ceil((RTV.TotalVotes / requiredAmount) * 40)
+
+    local msg = string.format("%s has RTV'd! (%s / %s)", pl:Nick(), RTV.TotalVotes, requiredAmount)
+    MsgN(msg)
+
+    for k, v in ipairs(players) do
+        v:ChatPrint(msg)
+    end
+
+    local filter = RecipientFilter()
+    filter:AddAllPlayers()
+
+    EmitSound("friends/friend_join.wav", vector_origin, -2, CHAN_AUTO, 0.8, 0, 0, sndPitch, 0, filter)
+
+    if RTV.ShouldChange() then
+        RTV.Start()
     end
 end
 
