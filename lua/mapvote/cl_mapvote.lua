@@ -379,7 +379,11 @@ net.Receive("RAM_WorkshopInfo", function()
 
             http.Fetch(thumbnail_url, function(img)
                 file.Write("ttt_meta_map_thumbnails/" .. name .. ".jpg", img)
-            end, error)
-        end, error)
+            end, function(err)
+                ErrorNoHalt(thumbnail_url .. "\n" .. err)
+            end)
+        end, function(err)
+            ErrorNoHalt(thumbnail_url .. "\n" .. err)
+        end)
     end
 end)
