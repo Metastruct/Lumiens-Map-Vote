@@ -376,6 +376,7 @@ net.Receive("RAM_WorkshopInfo", function()
         http.Fetch(BASE_WS_URL .. wsid, function(html)
             local thumbnail_url = html:match("%<meta property%=\"og%:image\" content%=\"(.+)\"")
             thumbnail_url = thumbnail_url:match("^https%:%/%/steamuserimages%-a%.akamaihd%.net%/ugc%/[A-Z0-9]+%/[A-Z0-9]+%/")
+            if not thumbnail_url then return end
 
             http.Fetch(thumbnail_url, function(img)
                 file.Write("ttt_meta_map_thumbnails/" .. name .. ".jpg", img)
@@ -383,7 +384,7 @@ net.Receive("RAM_WorkshopInfo", function()
                 ErrorNoHalt(thumbnail_url .. "\n" .. err)
             end)
         end, function(err)
-            ErrorNoHalt(thumbnail_url .. "\n" .. err)
+            ErrorNoHalt(BASE_WS_URL .. wsid .. "\n" .. err)
         end)
     end
 end)
