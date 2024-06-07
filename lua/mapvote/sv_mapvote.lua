@@ -223,6 +223,7 @@ hook.Add("PlayerFullyConnected", "NetworkMapWsids", function(ply)
         local wsid = file.Read("maps/" .. wsid_file, "GAME")
         local name = string.StripExtension(string.StripExtension(wsid_file)) -- twice, because .bsp.wsid
 
+        wsid = string.Explode("[\\/]", wsid)[1]
         lookup[name] = wsid
     end
 
