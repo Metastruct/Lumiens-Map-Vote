@@ -45,8 +45,12 @@ net.Receive("RAM_MapVoteStart", function()
         MapVote.Panel:Remove()
     end
 
-    MapVote.Panel = vgui.Create("RAM_VoteScreen")
-    MapVote.Panel:SetMaps(MapVote.CurrentMaps)
+    -- delay this by 1 second so it doesnt conflict with win screen
+    timer.Simple(1, function()
+        MapVote.Panel = vgui.Create("RAM_VoteScreen")
+        MapVote.Panel:SetMaps(MapVote.CurrentMaps)
+        MapVote.Panel:MakePopup()
+    end)
 end)
 
 net.Receive("RAM_MapVoteUpdate", function()
