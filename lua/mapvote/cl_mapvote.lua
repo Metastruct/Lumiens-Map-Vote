@@ -49,7 +49,6 @@ net.Receive("RAM_MapVoteStart", function()
     timer.Simple(1, function()
         MapVote.Panel = vgui.Create("RAM_VoteScreen")
         MapVote.Panel:SetMaps(MapVote.CurrentMaps)
-        MapVote.Panel:MakePopup()
     end)
 end)
 
