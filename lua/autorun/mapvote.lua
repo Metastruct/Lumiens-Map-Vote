@@ -38,31 +38,41 @@ if SERVER then
 
     hook.Add("Initialize", "AutoTTTMapVote", function()
         if GAMEMODE_NAME == "terrortown" then
-            function CheckForMapSwitch()
-                -- Check for mapswitch
-                local rounds_left = math.max(0, GetGlobalInt("ttt_rounds_left", 6) - 1)
-                SetGlobalInt("ttt_rounds_left", rounds_left)
-                local time_left = math.max(0, (GetConVar("ttt_time_limit_minutes"):GetInt() * 60) - CurTime())
-                local switchmap = false
-                local nextmap = string.upper(game.GetMapNext())
+            if gameloop and gameloop.CheckForMapSwitch then
+                -- TTT2's gameloop library exists, override the LoadNextMap GM function
+                function GAMEMODE:TTT2LoadNextMap(nextMap, roundsLeft, timeLeft)
+                    if roundsLeft <= 0 then
+                        LANG.Msg("limit_round", { mapname = nextMap })
+                    elseif timeLeft <= 0 then
+                        LANG.Msg("limit_time", { mapname = nextMap })
+                    end
 
-                if rounds_left <= 0 then
-                    LANG.Msg("limit_round", {
-                        mapname = nextmap
-                    })
-
-                    switchmap = true
-                elseif time_left <= 0 then
-                    LANG.Msg("limit_time", {
-                        mapname = nextmap
-                    })
-
-                    switchmap = true
-                end
-
-                if switchmap then
-                    timer.Stop("end2prep")
                     MapVote.Start(nil, nil, nil, nil)
+                end
+            elseif CheckForMapSwitch then
+                -- We're on an older version TTT2 where the old function exists, override it the old way
+                function CheckForMapSwitch()
+                    -- Check for mapswitch
+                    local rounds_left = math.max(0, GetGlobalInt("ttt_rounds_left", 6) - 1)
+                    SetGlobalInt("ttt_rounds_left", rounds_left)
+                    local time_left = math.max(0, (GetConVar("ttt_time_limit_minutes"):GetInt() * 60) - CurTime())
+                    local switchmap = false
+                    local nextmap = string.upper(game.GetMapNext())
+
+                    if rounds_left <= 0 then
+                        LANG.Msg("limit_round", { mapname = nextmap })
+
+                        switchmap = true
+                    elseif time_left <= 0 then
+                        LANG.Msg("limit_time", { mapname = nextmap })
+
+                        switchmap = true
+                    end
+
+                    if switchmap then
+                        timer.Stop("end2prep")
+                        MapVote.Start(nil, nil, nil, nil)
+                    end
                 end
             end
         end
@@ -81,8 +91,6 @@ if SERVER then
             end)
         end
     end)
-end
-
-if CLIENT then
+else
     include("mapvote/cl_mapvote.lua")
 end
