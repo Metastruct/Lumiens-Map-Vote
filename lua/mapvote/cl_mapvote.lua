@@ -49,6 +49,11 @@ net.Receive("RAM_MapVoteStart", function()
     timer.Simple(1, function()
         MapVote.Panel = vgui.Create("RAM_VoteScreen")
         MapVote.Panel:SetMaps(MapVote.CurrentMaps)
+
+        -- If the round report is present, bring it fully in front of the mapvote screen
+        if CLSCORE and not CLSCORE:IsPanelHidden() then
+            CLSCORE.panel:MakePopup()
+        end
     end)
 end)
 
