@@ -367,32 +367,46 @@ end
 
 derma.DefineControl("RAM_VoteScreen", "", PANEL, "DPanel")
 
+local initialized = false
+local init_callback = function() end
+hook.Add("InitPostEntity", "RAM_WorkshopInfo", function()
+    initialized = true
+    init_callback()
+end)
+
 local BASE_WS_URL = "https://steamcommunity.com/sharedfiles/filedetails/?id="
 net.Receive("RAM_WorkshopInfo", function()
     local bytes = net.ReadUInt(16)
     local data = net.ReadData(bytes)
     local json = util.Decompress(data)
     local lookup = util.JSONToTable(json)
+    local fn = function()
+        if not file.Exists("ttt_meta_map_thumbnails", "GAME") then
+            file.CreateDir("ttt_meta_map_thumbnails")
+        end
 
-    if not file.Exists("ttt_meta_map_thumbnails", "GAME") then
-        file.CreateDir("ttt_meta_map_thumbnails")
+        for name, wsid in pairs(lookup) do
+            if file.Exists("data/ttt_meta_map_thumbnails/" .. name .. ".jpg", "GAME") then continue end
+
+            http.Fetch(BASE_WS_URL .. wsid, function(html)
+                local thumbnail_url = html:match("%<meta property%=\"og%:image\" content%=\"(.+)\"")
+                thumbnail_url = thumbnail_url:match("^https%:%/%/steamuserimages%-a%.akamaihd%.net%/ugc%/[A-Z0-9]+%/[A-Z0-9]+%/")
+                if not thumbnail_url then return end
+
+                http.Fetch(thumbnail_url, function(img)
+                    file.Write("ttt_meta_map_thumbnails/" .. name .. ".jpg", img)
+                end, function(err)
+                    ErrorNoHalt(thumbnail_url .. "\n" .. err)
+                end)
+            end, function(err)
+                ErrorNoHalt(BASE_WS_URL .. wsid .. "\n" .. err)
+            end)
+        end
     end
 
-    for name, wsid in pairs(lookup) do
-        if file.Exists("data/ttt_meta_map_thumbnails/" .. name .. ".jpg", "GAME") then continue end
-
-        http.Fetch(BASE_WS_URL .. wsid, function(html)
-            local thumbnail_url = html:match("%<meta property%=\"og%:image\" content%=\"(.+)\"")
-            thumbnail_url = thumbnail_url:match("^https%:%/%/steamuserimages%-a%.akamaihd%.net%/ugc%/[A-Z0-9]+%/[A-Z0-9]+%/")
-            if not thumbnail_url then return end
-
-            http.Fetch(thumbnail_url, function(img)
-                file.Write("ttt_meta_map_thumbnails/" .. name .. ".jpg", img)
-            end, function(err)
-                ErrorNoHalt(thumbnail_url .. "\n" .. err)
-            end)
-        end, function(err)
-            ErrorNoHalt(BASE_WS_URL .. wsid .. "\n" .. err)
-        end)
+    if not initialized then
+        init_callback = fn
+    else
+        fn()
     end
 end)
