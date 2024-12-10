@@ -66,35 +66,35 @@ function CoolDownDoStuff()
     file.Write("mapvote/playcount.txt", util.TableToJSON(playCount))
 end
 
-function MapVote.Start(length, current, limit, prefix, callback)
+function MapVote.Start(length, current, limit, expressions, callback)
     current = current or MapVote.Config.AllowCurrentMap or false
     length = length or MapVote.Config.TimeLimit or 28
     limit = limit or MapVote.Config.MapLimit or 24
     cooldown = MapVote.Config.EnableCooldown or MapVote.Config.EnableCooldown == nil and true
-    prefix = prefix or MapVote.Config.MapPrefixes
+    expressions = expressions or MapVote.Config.MapExpressions
     autoGamemode = autoGamemode or MapVote.Config.AutoGamemode or MapVote.Config.AutoGamemode == nil and true
 
-    local is_expression = false
-    if not prefix then
+    if not expressions then
         local info = file.Read(GAMEMODE.Folder .. "/" .. GAMEMODE.FolderName .. ".txt", "GAME")
         if info then
             info = util.KeyValuesToTable(info)
-            prefix = info.maps
+            expressions = info.maps
         else
-            error("MapVote Prefix can not be loaded from gamemode")
+            error("MapVote Expressions can not be loaded from gamemode")
         end
+    end
 
-        is_expression = true
-    else
-        if prefix and type(prefix) ~= "table" then
-            prefix = {prefix}
-        end
+    if type(expressions) ~= "table" then
+        expressions = {expressions}
     end
 
     local maps = file.Find("maps/*.bsp", "GAME")
     local vote_maps = {}
     local play_counts = {}
     local amt = 0
+
+    local curmap = game.GetMap():lower() .. ".bsp"
+
     for _, map in RandomPairs(maps) do
         local plays = playCount[map]
 
@@ -102,22 +102,13 @@ function MapVote.Start(length, current, limit, prefix, callback)
             plays = 0
         end
 
-        if (not ((not current and game.GetMap():lower() .. ".bsp" == map) or (cooldown and table.HasValue(recentmaps, map)))) then
-            if is_expression then
-                -- This might work (from gamemode.txt)
-                if (string.find(map, prefix)) then
+        if (not ((not current and curmap == map) or (cooldown and table.HasValue(recentmaps, map)))) then
+            for _, v in ipairs(expressions) do
+                if string.find(map, v) then
                     vote_maps[#vote_maps + 1] = map:sub(1, -5)
                     play_counts[#play_counts + 1] = plays
                     amt = amt + 1
-                end
-            else
-                for _, v in pairs(prefix) do
-                    if string.find(map, "^" .. v) then
-                        vote_maps[#vote_maps + 1] = map:sub(1, -5)
-                        play_counts[#play_counts + 1] = plays
-                        amt = amt + 1
-                        break
-                    end
+                    break
                 end
             end
 
@@ -149,7 +140,7 @@ function MapVote.Start(length, current, limit, prefix, callback)
                 map_results[v] = 0
             end
 
-            for k2, v2 in pairs(player.GetAll()) do
+            for k2, v2 in ipairs(player.GetAll()) do
                 if (v2:SteamID() == k) then
                     map_results[v] = map_results[v] + 1
                 end
@@ -157,7 +148,9 @@ function MapVote.Start(length, current, limit, prefix, callback)
         end
 
         CoolDownDoStuff()
+
         local winner = table.GetWinningKey(map_results) or 1
+
         net.Start("RAM_MapVoteUpdate")
         net.WriteUInt(MapVote.UPDATE_WIN, 3)
         net.WriteUInt(winner, 32)
@@ -165,13 +158,14 @@ function MapVote.Start(length, current, limit, prefix, callback)
 
         local map = MapVote.CurrentMaps[winner]
         local gamemode = nil
+
         if (autoGamemode) then
             -- check if map matches a gamemode's map pattern
-            for k, gm in pairs(engine.GetGamemodes()) do
+            for k, gm in ipairs(engine.GetGamemodes()) do
                 -- ignore empty patterns
                 if (gm.maps and gm.maps ~= "") then
                     -- patterns are separated by "|"
-                    for k2, pattern in pairs(string.Split(gm.maps, "|")) do
+                    for k2, pattern in ipairs(string.Split(gm.maps, "|")) do
                         if (string.match(map, pattern)) then
                             gamemode = gm.name
                             break
@@ -219,6 +213,7 @@ end
 hook.Add("PlayerFullyConnected", "NetworkMapWsids", function(ply)
     local lookup = {}
     local wsid_files, _ = file.Find("maps/*.wsid", "GAME")
+
     for _, wsid_file in ipairs(wsid_files) do
         local wsid = file.Read("maps/" .. wsid_file, "GAME")
         local name = string.StripExtension(string.StripExtension(wsid_file)) -- twice, because .bsp.wsid
