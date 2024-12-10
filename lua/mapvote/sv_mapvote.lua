@@ -44,7 +44,7 @@ else
 end
 
 function CoolDownDoStuff()
-    cooldownnum = MapVote.Config.MapsBeforeRevote or 3
+    local cooldownnum = MapVote.Config.MapsBeforeRevote or 3
 
     if #recentmaps == cooldownnum then
         table.remove(recentmaps)
@@ -70,9 +70,10 @@ function MapVote.Start(length, current, limit, expressions, callback)
     current = current or MapVote.Config.AllowCurrentMap or false
     length = length or MapVote.Config.TimeLimit or 28
     limit = limit or MapVote.Config.MapLimit or 24
-    cooldown = MapVote.Config.EnableCooldown or MapVote.Config.EnableCooldown == nil and true
     expressions = expressions or MapVote.Config.MapExpressions
-    autoGamemode = autoGamemode or MapVote.Config.AutoGamemode or MapVote.Config.AutoGamemode == nil and true
+
+    local cooldown = MapVote.Config.EnableCooldown or MapVote.Config.EnableCooldown == nil and true
+    local autoGamemode = autoGamemode or MapVote.Config.AutoGamemode or MapVote.Config.AutoGamemode == nil and true
 
     if not expressions then
         local info = file.Read(GAMEMODE.Folder .. "/" .. GAMEMODE.FolderName .. ".txt", "GAME")
@@ -104,10 +105,13 @@ function MapVote.Start(length, current, limit, expressions, callback)
 
         if (not ((not current and curmap == map) or (cooldown and table.HasValue(recentmaps, map)))) then
             for _, v in ipairs(expressions) do
-                if string.find(map, v) then
-                    vote_maps[#vote_maps + 1] = map:sub(1, -5)
+                local mapname = map:sub(1, -5)
+
+                if string.find(mapname, v) then
+                    vote_maps[#vote_maps + 1] = mapname
                     play_counts[#play_counts + 1] = plays
                     amt = amt + 1
+
                     break
                 end
             end
